@@ -1,0 +1,156 @@
+<html>
+
+<head>
+    <link rel="stylesheet" type="text/css" href="semantic-ui/semantic.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"
+        integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+
+    <script src="semantic-ui/semantic.min.js"></script>
+
+    <script>
+        $(function () {
+            var parsedLog = []
+
+            $('.ui.sticky').sticky({
+                context: '.container',
+                observeChanges: true
+            })
+            $('.dropdown').dropdown({
+                action: 'activate'
+            })
+            $('#open-file').on('click', function (e) {
+                $('#log-file').trigger('click')
+                e.preventDefault()
+            })
+            $('#log-level').on('change', function (e) {
+                displayLog(parsedLog)
+            })
+            $('#log-search').on('input', function (e) {
+                displayLog(parsedLog)
+            })
+            $('#log-file').on('change', function (e) {
+                var input = event.target;
+                parsedLog = []
+
+                var reader = new FileReader();
+                reader.onload = function () {
+                    var text = reader.result.split("\n");
+                    for (let line of text) {
+                        if (line.trim().length == 0) continue
+
+                        var splitLine = line.split(' ')
+                        var columns = splitLine.slice(0, 3)
+                        // alert(columns)
+                        var text = splitLine.slice(3).join(' ')
+                        parsedLog.push({
+                            level: columns[0].replace(/\[|\]/gi, ''),
+                            date: columns[1].replace(/\[|\]/gi, ''),
+                            method: columns[2].replace(/\[|\]/gi, ''),
+                            message: text
+                        })
+                    }
+                    // document.write(JSON.stringify(parsedLog, null, 2))
+
+                    displayLog(parsedLog)
+                };
+                reader.readAsText(input.files[0]);
+            })
+
+            function displayLog(log) {
+                if (log.length == 0) return
+
+                var level = $('#log-level').val()
+                var search = $('#log-search').val()
+                var filteredLog = log.filter(line => {
+                    var included = true
+
+                    if (search.length > 0)
+                        included = included && line.message.toLowerCase().includes(search.toLowerCase())
+
+                    if (level != "ALL")
+                        included = included && line.level == level
+
+                    return included
+                })
+
+                var table = $("#log-table").find('tbody')
+                table.empty()
+                for (let line of filteredLog) {
+                    var row = $('<tr>');
+                    row.append($('<td>').text(line.level))
+                    row.append($('<td>').text(line.date))
+                    row.append($('<td>').text(line.message))
+                    row.append($('<td>').text(line.method).addClass('right aligned'))
+                    switch (line.level.toLowerCase()) {
+                        case "error":
+                        case "fatal":
+                            row.addClass("error")
+                            break;
+                        case "info":
+                            break;
+                        case "warn":
+                            row.addClass("warning")
+                            break;
+                    }
+                    table.append(row)
+                }
+                $('.ui.sticky').sticky('refresh')
+            }
+        })
+    </script>
+
+    <style>
+        .no-border {
+            border: none !important;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container fluid">
+
+        <div class="ui menu stackable sticky attached">
+            <div class="header item">
+                Paperback - Log Reader
+            </div>
+            <a class="item" id="open-file">
+                Open File
+            </a>
+            <div class="right menu">
+                <select class="ui dropdown item no-border" id="log-level">
+                    <option>ALL</option>
+                    <option>INFO</option>
+                    <option>ERROR</option>
+                    <option>WARN</option>
+                    <option>FATAL</option>
+                </select>
+                <div class="item">
+                    <div class="ui transparent icon input">
+                        <input class="prompt" type="text" placeholder="Search" id="log-search">
+                        <i class="search link icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table class="ui selectable table attached compact" id="log-table">
+            <thead>
+                <tr>
+                    <th>Level</th>
+                    <th>Date</th>
+                    <th class="sixteen wide">Message</th>
+                    <th>Method</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="4">No File Opened</td>
+                </tr>
+            </tbody>
+        </table>
+        <input type="file" id="log-file" hidden="true">
+    </div>
+</body>
+
+</html>
